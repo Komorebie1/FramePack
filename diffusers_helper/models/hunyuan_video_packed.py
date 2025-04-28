@@ -67,7 +67,7 @@ def pad_for_3d_conv(x, kernel_size):
     pad_t = (pt - (t % pt)) % pt
     pad_h = (ph - (h % ph)) % ph
     pad_w = (pw - (w % pw)) % pw
-    return torch.nn.functional.pad(x, (0, pad_w, 0, pad_h, 0, pad_t), mode='replicate')
+    return torch.nn.functional.pad(x, (0, pad_w, 0, pad_h, 0, pad_t), mode='replicate') #  what is replicate
 
 
 def center_down_sample_3d(x, kernel_size):
@@ -417,7 +417,7 @@ class HunyuanVideoTokenRefiner(nn.Module):
 
         return hidden_states
 
-
+# TODO: read the code
 class HunyuanVideoRotaryPosEmbed(nn.Module):
     def __init__(self, rope_dim, theta):
         super().__init__()
@@ -433,6 +433,8 @@ class HunyuanVideoRotaryPosEmbed(nn.Module):
 
     @torch.no_grad()
     def forward_inner(self, frame_indices, height, width, device):
+
+        print("frame_indices: ", frame_indices.shape)
         GT, GY, GX = torch.meshgrid(
             frame_indices.to(device=device, dtype=torch.float32),
             torch.arange(0, height, device=device, dtype=torch.float32),
@@ -740,6 +742,7 @@ class HunyuanVideoTransformer3DModelPacked(ModelMixin, ConfigMixin, PeftAdapterM
         pooled_projection_dim: int = 768,
         rope_theta: float = 256.0,
         rope_axes_dim: Tuple[int] = (16, 56, 56),
+        ## below is new added
         has_image_proj=False,
         image_proj_dim=1152,
         has_clean_x_embedder=False,
@@ -910,9 +913,18 @@ class HunyuanVideoTransformer3DModelPacked(ModelMixin, ConfigMixin, PeftAdapterM
         post_patch_num_frames = num_frames // p_t
         post_patch_height = height // p
         post_patch_width = width // p
-        original_context_length = post_patch_num_frames * post_patch_height * post_patch_width
+        original_context_length = post_patch_num_frames * post_patch_height * post_patch_width # nums of Tokens
 
-        hidden_states, rope_freqs = self.process_input_hidden_states(hidden_states, latent_indices, clean_latents, clean_latent_indices, clean_latents_2x, clean_latent_2x_indices, clean_latents_4x, clean_latent_4x_indices)
+        print("hidden_states shape: ", hidden_states.shape)
+
+        hidden_states, rope_freqs = self.process_input_hidden_states(hidden_states, 
+                                                                     latent_indices, 
+                                                                     clean_latents, 
+                                                                     clean_latent_indices, 
+                                                                     clean_latents_2x, 
+                                                                     clean_latent_2x_indices, 
+                                                                     clean_latents_4x, 
+                                                                     clean_latent_4x_indices)
 
         temb = self.gradient_checkpointing_method(self.time_text_embed, timestep, guidance, pooled_projections)
         encoder_hidden_states = self.gradient_checkpointing_method(self.context_embedder, encoder_hidden_states, timestep, encoder_attention_mask)
